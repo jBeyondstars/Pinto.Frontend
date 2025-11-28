@@ -42,7 +42,7 @@ export const StringLiteral = createToken({
 
 export const NumberLiteral = createToken({
   name: "NumberLiteral",
-  pattern: /\d+/,
+  pattern: /-?\d+/,
 });
 
 export const ColorLiteral = createToken({
