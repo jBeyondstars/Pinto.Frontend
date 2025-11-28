@@ -5,7 +5,8 @@ interface DecompiledNode {
   id: string;
   shape: ShapeTypeAST;
   label?: string;
-  style?: { fill?: string; stroke?: string };
+  fill?: string;
+  stroke?: string;
   x: number;
   y: number;
   width: number;
@@ -80,17 +81,6 @@ function findConnectedNode(
   return closest;
 }
 
-function formatStyleProps(style: { fill?: string; stroke?: string }): string {
-  const props: string[] = [];
-  if (style.fill && style.fill !== "#ffffff" && style.fill !== "transparent") {
-    props.push(`fill: ${style.fill}`);
-  }
-  if (style.stroke && style.stroke !== "#000000") {
-    props.push(`stroke: ${style.stroke}`);
-  }
-  return props.join(", ");
-}
-
 function arrowTypeToSymbol(arrowType: ArrowTypeAST): string {
   switch (arrowType) {
     case "left": return "<-";
@@ -135,10 +125,10 @@ export function decompile(shapes: Shape[]): string {
       };
 
       if (shape.fill !== "#ffffff" && shape.fill !== "transparent") {
-        node.style = { ...node.style, fill: shape.fill };
+        node.fill = shape.fill;
       }
       if (shape.stroke !== "#000000") {
-        node.style = { ...node.style, stroke: shape.stroke };
+        node.stroke = shape.stroke;
       }
 
       nodes.set(nodeId, node);
@@ -174,12 +164,21 @@ export function decompile(shapes: Shape[]): string {
   for (const [id, node] of nodes) {
     let line = id;
 
-    const styleStr = node.style ? formatStyleProps(node.style) : "";
-    if (styleStr) {
-      line += `(${node.shape}, ${styleStr})`;
-    } else {
-      line += `(${node.shape})`;
+    // Build props: shape type, position, dimensions, and style
+    const props: string[] = [];
+    props.push(`x: ${Math.round(node.x)}`);
+    props.push(`y: ${Math.round(node.y)}`);
+    props.push(`width: ${Math.round(node.width)}`);
+    props.push(`height: ${Math.round(node.height)}`);
+
+    if (node.fill) {
+      props.push(`fill: ${node.fill}`);
     }
+    if (node.stroke) {
+      props.push(`stroke: ${node.stroke}`);
+    }
+
+    line += `(${node.shape}, ${props.join(", ")})`;
 
     if (node.label) {
       line += `: "${node.label}"`;

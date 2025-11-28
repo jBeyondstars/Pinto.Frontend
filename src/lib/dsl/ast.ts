@@ -23,6 +23,10 @@ export interface StyleProps {
   fill?: string;
   stroke?: string;
   strokeWidth?: number;
+  x?: number;
+  y?: number;
+  width?: number;
+  height?: number;
 }
 
 export interface NodeAST extends BaseAST {

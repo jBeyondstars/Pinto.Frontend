@@ -376,6 +376,10 @@ class PintoASTVisitor extends BaseCstVisitor {
         if (key === "fill") style.fill = value;
         if (key === "stroke") style.stroke = value;
         if (key === "strokeWidth") style.strokeWidth = Number(value);
+        if (key === "x") style.x = Number(value);
+        if (key === "y") style.y = Number(value);
+        if (key === "width") style.width = Number(value);
+        if (key === "height") style.height = Number(value);
       }
     }
     return style;

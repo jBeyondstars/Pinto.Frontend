@@ -52,7 +52,6 @@ export async function compile(
       nodesMap.set(stmt.id, stmt);
     } else if (stmt.type === "edge") {
       edges.push(stmt);
-      // Ensure both nodes exist
       if (!nodesMap.has(stmt.from)) {
         nodesMap.set(stmt.from, { type: "node", id: stmt.from });
       }
@@ -64,77 +63,114 @@ export async function compile(
     }
   }
 
-  // Build ELK graph
-  const elkGraph: ElkNode = {
-    id: "root",
-    layoutOptions: {
-      "elk.algorithm": algorithm,
-      "elk.direction": direction,
-      "elk.spacing.nodeNode": String(nodeSpacing),
-      "elk.spacing.edgeEdge": String(edgeSpacing),
-      "elk.layered.spacing.nodeNodeBetweenLayers": String(nodeSpacing),
-    },
-    children: [],
-    edges: [],
-  };
+  // Check if all nodes have explicit positions
+  const allHavePositions = Array.from(nodesMap.values()).every(
+    (node) => node.style?.x !== undefined && node.style?.y !== undefined
+  );
 
-  // Add nodes to ELK graph
-  for (const [id, node] of nodesMap) {
-    const shape = node.shape || DEFAULT_SHAPE;
-    const dims = SHAPE_DIMENSIONS[shape];
-    elkGraph.children!.push({
-      id,
-      width: dims.width,
-      height: dims.height,
-      labels: node.label ? [{ text: node.label }] : [],
-    });
-  }
-
-  // Add edges to ELK graph
-  for (let i = 0; i < edges.length; i++) {
-    const edge = edges[i];
-    elkGraph.edges!.push({
-      id: `e${i}`,
-      sources: [edge.from],
-      targets: [edge.to],
-      labels: edge.label ? [{ text: edge.label }] : [],
-    });
-  }
-
-  // Run ELK layout
-  const elk = await getELK();
-  const layoutedGraph = await elk.layout(elkGraph);
-
-  // Convert to Shapes
   const shapes: Shape[] = [];
 
-  // Create node shapes
-  if (layoutedGraph.children) {
-    for (const elkNode of layoutedGraph.children) {
-      const astNode = nodesMap.get(elkNode.id);
-      if (!astNode) continue;
-
+  if (allHavePositions) {
+    // Use explicit positions - no ELK layout needed
+    for (const [id, node] of nodesMap) {
+      const shapeType = node.shape || DEFAULT_SHAPE;
+      const dims = SHAPE_DIMENSIONS[shapeType];
       const shape = createNodeShape(
-        elkNode.id,
-        elkNode.x || 0,
-        elkNode.y || 0,
-        elkNode.width || 120,
-        elkNode.height || 60,
-        astNode
+        id,
+        node.style!.x!,
+        node.style!.y!,
+        node.style?.width || dims.width,
+        node.style?.height || dims.height,
+        node
       );
       shapes.push(shape);
     }
-  }
 
-  // Create edge shapes
-  if (layoutedGraph.edges) {
-    for (let i = 0; i < layoutedGraph.edges.length; i++) {
-      const elkEdge = layoutedGraph.edges[i] as ElkExtendedEdge;
-      const astEdge = edges[i];
+    // Create edges as direct lines between node centers
+    for (const edge of edges) {
+      const fromNode = nodesMap.get(edge.from);
+      const toNode = nodesMap.get(edge.to);
+      if (!fromNode || !toNode) continue;
 
-      const edgeShape = createEdgeShape(elkEdge, astEdge, layoutedGraph);
-      if (edgeShape) {
-        shapes.push(edgeShape);
+      const fromDims = SHAPE_DIMENSIONS[fromNode.shape || DEFAULT_SHAPE];
+      const toDims = SHAPE_DIMENSIONS[toNode.shape || DEFAULT_SHAPE];
+
+      const fromX = fromNode.style!.x! + (fromNode.style?.width || fromDims.width) / 2;
+      const fromY = fromNode.style!.y! + (fromNode.style?.height || fromDims.height) / 2;
+      const toX = toNode.style!.x! + (toNode.style?.width || toDims.width) / 2;
+      const toY = toNode.style!.y! + (toNode.style?.height || toDims.height) / 2;
+
+      const edgeShape = createArrowFromPoints(
+        [{ x: fromX, y: fromY }, { x: toX, y: toY }],
+        edge
+      );
+      shapes.push(edgeShape);
+    }
+  } else {
+    // Use ELK for automatic layout
+    const elkGraph: ElkNode = {
+      id: "root",
+      layoutOptions: {
+        "elk.algorithm": algorithm,
+        "elk.direction": direction,
+        "elk.spacing.nodeNode": String(nodeSpacing),
+        "elk.spacing.edgeEdge": String(edgeSpacing),
+        "elk.layered.spacing.nodeNodeBetweenLayers": String(nodeSpacing),
+      },
+      children: [],
+      edges: [],
+    };
+
+    for (const [id, node] of nodesMap) {
+      const shape = node.shape || DEFAULT_SHAPE;
+      const dims = SHAPE_DIMENSIONS[shape];
+      elkGraph.children!.push({
+        id,
+        width: dims.width,
+        height: dims.height,
+        labels: node.label ? [{ text: node.label }] : [],
+      });
+    }
+
+    for (let i = 0; i < edges.length; i++) {
+      const edge = edges[i];
+      elkGraph.edges!.push({
+        id: `e${i}`,
+        sources: [edge.from],
+        targets: [edge.to],
+        labels: edge.label ? [{ text: edge.label }] : [],
+      });
+    }
+
+    const elk = await getELK();
+    const layoutedGraph = await elk.layout(elkGraph);
+
+    if (layoutedGraph.children) {
+      for (const elkNode of layoutedGraph.children) {
+        const astNode = nodesMap.get(elkNode.id);
+        if (!astNode) continue;
+
+        const shape = createNodeShape(
+          elkNode.id,
+          elkNode.x || 0,
+          elkNode.y || 0,
+          elkNode.width || 120,
+          elkNode.height || 60,
+          astNode
+        );
+        shapes.push(shape);
+      }
+    }
+
+    if (layoutedGraph.edges) {
+      for (let i = 0; i < layoutedGraph.edges.length; i++) {
+        const elkEdge = layoutedGraph.edges[i] as ElkExtendedEdge;
+        const astEdge = edges[i];
+
+        const edgeShape = createEdgeShape(elkEdge, astEdge, layoutedGraph);
+        if (edgeShape) {
+          shapes.push(edgeShape);
+        }
       }
     }
   }
