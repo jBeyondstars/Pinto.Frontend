@@ -6,8 +6,10 @@ interface DecompiledNode {
   shape: ShapeTypeAST;
   label?: string;
   style?: { fill?: string; stroke?: string };
-  centerX: number;
-  centerY: number;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
 }
 
 interface DecompiledEdge {
@@ -19,7 +21,7 @@ interface DecompiledEdge {
 
 function generateNodeId(index: number): string {
   if (index < 26) {
-    return String.fromCharCode(97 + index); // a-z
+    return String.fromCharCode(97 + index);
   }
   return `node${index + 1}`;
 }
@@ -35,16 +37,6 @@ function shapeToNodeType(shape: Shape): ShapeTypeAST | null {
   }
 }
 
-function getShapeCenter(shape: Shape): { x: number; y: number } {
-  if (shape.type === "rectangle" || shape.type === "ellipse") {
-    return {
-      x: shape.x + shape.width / 2,
-      y: shape.y + shape.height / 2,
-    };
-  }
-  return { x: shape.x, y: shape.y };
-}
-
 function arrowTypeToAST(shape: ArrowShape | LineShape): ArrowTypeAST {
   if (shape.type === "line") {
     return "line";
@@ -58,25 +50,29 @@ function arrowTypeToAST(shape: ArrowShape | LineShape): ArrowTypeAST {
   return "right";
 }
 
+function isPointInOrNearShape(
+  point: { x: number; y: number },
+  node: DecompiledNode,
+  margin: number = 30
+): boolean {
+  const left = node.x - margin;
+  const right = node.x + node.width + margin;
+  const top = node.y - margin;
+  const bottom = node.y + node.height + margin;
+
+  return point.x >= left && point.x <= right && point.y >= top && point.y <= bottom;
+}
+
 function findConnectedNode(
   point: { x: number; y: number },
-  nodes: Map<string, DecompiledNode>,
-  threshold: number = 50
+  nodes: Map<string, DecompiledNode>
 ): string | null {
-  let closest: string | null = null;
-  let minDist = threshold;
-
   for (const [id, node] of nodes) {
-    const dx = point.x - node.centerX;
-    const dy = point.y - node.centerY;
-    const dist = Math.sqrt(dx * dx + dy * dy);
-    if (dist < minDist) {
-      minDist = dist;
-      closest = id;
+    if (isPointInOrNearShape(point, node)) {
+      return id;
     }
   }
-
-  return closest;
+  return null;
 }
 
 function formatStyleProps(style: { fill?: string; stroke?: string }): string {
@@ -102,6 +98,16 @@ function arrowTypeToSymbol(arrowType: ArrowTypeAST): string {
   }
 }
 
+function getAbsolutePoint(
+  shape: Shape,
+  point: { x: number; y: number }
+): { x: number; y: number } {
+  return {
+    x: shape.x + point.x,
+    y: shape.y + point.y,
+  };
+}
+
 export function decompile(shapes: Shape[]): string {
   const nodes = new Map<string, DecompiledNode>();
   const edges: DecompiledEdge[] = [];
@@ -111,18 +117,18 @@ export function decompile(shapes: Shape[]): string {
   let nodeIndex = 0;
   for (const shape of shapes) {
     const nodeType = shapeToNodeType(shape);
-    if (nodeType) {
+    if (nodeType && (shape.type === "rectangle" || shape.type === "ellipse")) {
       const nodeId = generateNodeId(nodeIndex++);
-      const center = getShapeCenter(shape);
 
       const node: DecompiledNode = {
         id: nodeId,
         shape: nodeType,
-        centerX: center.x,
-        centerY: center.y,
+        x: shape.x,
+        y: shape.y,
+        width: shape.width,
+        height: shape.height,
       };
 
-      // Extract style if non-default
       if (shape.fill !== "#ffffff" && shape.fill !== "transparent") {
         node.style = { ...node.style, fill: shape.fill };
       }
@@ -141,13 +147,13 @@ export function decompile(shapes: Shape[]): string {
       const points = shape.points;
       if (points.length < 2) continue;
 
-      const startPoint = points[0];
-      const endPoint = points[points.length - 1];
+      const startPoint = getAbsolutePoint(shape, points[0]);
+      const endPoint = getAbsolutePoint(shape, points[points.length - 1]);
 
       const fromNode = findConnectedNode(startPoint, nodes);
       const toNode = findConnectedNode(endPoint, nodes);
 
-      if (fromNode && toNode && fromNode !== toNode) {
+      if (fromNode && toNode) {
         edges.push({
           from: fromNode,
           to: toNode,
@@ -160,11 +166,9 @@ export function decompile(shapes: Shape[]): string {
   // Generate DSL code
   const lines: string[] = [];
 
-  // Output node definitions
   for (const [id, node] of nodes) {
     let line = id;
 
-    // Add shape spec
     const styleStr = node.style ? formatStyleProps(node.style) : "";
     if (styleStr) {
       line += `(${node.shape}, ${styleStr})`;
@@ -172,7 +176,6 @@ export function decompile(shapes: Shape[]): string {
       line += `(${node.shape})`;
     }
 
-    // Add label if present
     if (node.label) {
       line += `: "${node.label}"`;
     }
@@ -180,12 +183,10 @@ export function decompile(shapes: Shape[]): string {
     lines.push(line);
   }
 
-  // Add blank line between nodes and edges
   if (nodes.size > 0 && edges.length > 0) {
     lines.push("");
   }
 
-  // Output edges
   for (const edge of edges) {
     const arrow = arrowTypeToSymbol(edge.arrowType);
     let line = `${edge.from} ${arrow} ${edge.to}`;
