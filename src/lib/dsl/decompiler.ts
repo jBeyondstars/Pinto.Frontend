@@ -50,29 +50,34 @@ function arrowTypeToAST(shape: ArrowShape | LineShape): ArrowTypeAST {
   return "right";
 }
 
-function isPointInOrNearShape(
+function distanceToShape(
   point: { x: number; y: number },
-  node: DecompiledNode,
-  margin: number = 30
-): boolean {
-  const left = node.x - margin;
-  const right = node.x + node.width + margin;
-  const top = node.y - margin;
-  const bottom = node.y + node.height + margin;
-
-  return point.x >= left && point.x <= right && point.y >= top && point.y <= bottom;
+  node: DecompiledNode
+): number {
+  const centerX = node.x + node.width / 2;
+  const centerY = node.y + node.height / 2;
+  const dx = point.x - centerX;
+  const dy = point.y - centerY;
+  return Math.sqrt(dx * dx + dy * dy);
 }
 
 function findConnectedNode(
   point: { x: number; y: number },
-  nodes: Map<string, DecompiledNode>
+  nodes: Map<string, DecompiledNode>,
+  maxDistance: number = Infinity
 ): string | null {
+  let closest: string | null = null;
+  let minDist = maxDistance;
+
   for (const [id, node] of nodes) {
-    if (isPointInOrNearShape(point, node)) {
-      return id;
+    const dist = distanceToShape(point, node);
+    if (dist < minDist) {
+      minDist = dist;
+      closest = id;
     }
   }
-  return null;
+
+  return closest;
 }
 
 function formatStyleProps(style: { fill?: string; stroke?: string }): string {
