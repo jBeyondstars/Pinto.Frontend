@@ -4,6 +4,7 @@ export interface Board {
   id: string;
   name: string;
   description: string | null;
+  canvasData: string | null;
   ownerId: string;
   createdAt: string;
   updatedAt: string;
@@ -17,6 +18,10 @@ export interface CreateBoardRequest {
 export interface UpdateBoardRequest {
   name: string;
   description?: string;
+}
+
+export interface UpdateCanvasRequest {
+  canvasData: string | null;
 }
 
 async function handleResponse<T>(response: Response): Promise<T> {
@@ -51,6 +56,15 @@ export const boardsApi = {
 
   update: async (id: string, data: UpdateBoardRequest): Promise<Board> => {
     const response = await fetch(`${API_BASE}/boards/${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+    return handleResponse(response);
+  },
+
+  updateCanvas: async (id: string, data: UpdateCanvasRequest): Promise<Board> => {
+    const response = await fetch(`${API_BASE}/boards/${id}/canvas`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),

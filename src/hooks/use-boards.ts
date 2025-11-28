@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { boardsApi, type CreateBoardRequest, type UpdateBoardRequest } from "@/lib/api";
+import { boardsApi, type CreateBoardRequest, type UpdateBoardRequest, type UpdateCanvasRequest } from "@/lib/api";
 
 export const boardKeys = {
   all: ["boards"] as const,
@@ -52,6 +52,18 @@ export function useDeleteBoard() {
     mutationFn: (id: string) => boardsApi.delete(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: boardKeys.all });
+    },
+  });
+}
+
+export function useUpdateCanvas() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: UpdateCanvasRequest }) =>
+      boardsApi.updateCanvas(id, data),
+    onSuccess: (_, { id }) => {
+      queryClient.invalidateQueries({ queryKey: boardKeys.detail(id) });
     },
   });
 }
