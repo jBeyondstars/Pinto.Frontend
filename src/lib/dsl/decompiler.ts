@@ -86,6 +86,8 @@ function findClosestNodes(
   return results.sort((a, b) => a.dist - b.dist);
 }
 
+const CONNECTION_THRESHOLD = 50; // Max distance to consider arrow connected to a shape
+
 function findEdgeNodes(
   startPoint: { x: number; y: number },
   endPoint: { x: number; y: number },
@@ -98,20 +100,32 @@ function findEdgeNodes(
 
   if (startClosest.length === 0 || endClosest.length === 0) return null;
 
-  const from = startClosest[0].id;
-  let to = endClosest[0].id;
+  // Check if endpoints are actually close enough to shapes
+  const startNearShape = startClosest[0].dist <= CONNECTION_THRESHOLD;
+  const endNearShape = endClosest[0].dist <= CONNECTION_THRESHOLD;
 
-  // If both ends point to the same node and there are other nodes,
-  // try to find a different node for the end point
-  if (from === to && endClosest.length > 1) {
-    to = endClosest[1].id;
-  }
+  // If neither endpoint is near a shape, this arrow is not connected
+  if (!startNearShape && !endNearShape) return null;
 
-  // If still same node after trying alternatives, check if start could be different
-  if (from === to && startClosest.length > 1) {
-    const altFrom = startClosest[1].id;
-    if (altFrom !== to) {
-      return { from: altFrom, to };
+  // Get the closest nodes within threshold
+  const from = startNearShape ? startClosest[0].id : null;
+  let to = endNearShape ? endClosest[0].id : null;
+
+  // Need both endpoints connected
+  if (!from || !to) return null;
+
+  // If both ends point to the same node, try to find alternatives
+  if (from === to) {
+    // Try alternative for end point
+    if (endClosest.length > 1 && endClosest[1].dist <= CONNECTION_THRESHOLD) {
+      to = endClosest[1].id;
+    }
+    // Still same? Try alternative for start point
+    if (from === to && startClosest.length > 1 && startClosest[1].dist <= CONNECTION_THRESHOLD) {
+      const altFrom = startClosest[1].id;
+      if (altFrom !== to) {
+        return { from: altFrom, to };
+      }
     }
   }
 
