@@ -110,3 +110,47 @@ export function simplifyPath(points: Point[], tolerance: number = 2): Point[] {
   result.push(points[points.length - 1]);
   return result;
 }
+
+const CONNECTION_THRESHOLD = 30;
+
+export function distanceToShapeBorder(point: Point, shape: Shape): number {
+  if (shape.type === "line" || shape.type === "arrow" || shape.type === "freehand") {
+    return Infinity;
+  }
+
+  const bounds = getShapeBounds(shape);
+  const left = bounds.x;
+  const right = bounds.x + bounds.width;
+  const top = bounds.y;
+  const bottom = bounds.y + bounds.height;
+
+  if (point.x >= left && point.x <= right && point.y >= top && point.y <= bottom) {
+    return 0;
+  }
+
+  const dx = Math.max(left - point.x, 0, point.x - right);
+  const dy = Math.max(top - point.y, 0, point.y - bottom);
+  return Math.sqrt(dx * dx + dy * dy);
+}
+
+export function findConnectableShapeNearPoint(
+  point: Point,
+  shapes: Shape[],
+  excludeId?: string
+): Shape | null {
+  let closest: Shape | null = null;
+  let minDist = CONNECTION_THRESHOLD;
+
+  for (const shape of shapes) {
+    if (shape.id === excludeId) continue;
+    if (shape.type === "line" || shape.type === "arrow" || shape.type === "freehand") continue;
+
+    const dist = distanceToShapeBorder(point, shape);
+    if (dist < minDist) {
+      minDist = dist;
+      closest = shape;
+    }
+  }
+
+  return closest;
+}

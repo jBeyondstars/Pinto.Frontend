@@ -6,8 +6,11 @@ import {
   getShapeAtPoint,
   generateId,
   simplifyPath,
+  findConnectableShapeNearPoint,
   type Point,
   type Shape,
+  type ArrowShape,
+  type LineShape,
   type CanvasState,
 } from "@/lib/canvas";
 import { Toolbar } from "./toolbar";
@@ -215,10 +218,7 @@ export function Whiteboard({
         const dx = point.x - startPoint.x;
         const dy = point.y - startPoint.y;
         for (const id of store.selectedIds) {
-          const shape = store.shapes.find((s) => s.id === id);
-          if (shape) {
-            store.updateShape(id, { x: shape.x + dx, y: shape.y + dy });
-          }
+          store.moveShape(id, dx, dy);
         }
         setStartPoint(point);
       } else if (currentShape) {
@@ -270,7 +270,15 @@ export function Whiteboard({
         const [p1, p2] = currentShape.points;
         const dist = Math.sqrt((p2.x - p1.x) ** 2 + (p2.y - p1.y) ** 2);
         if (dist > 5) {
-          store.addShape(currentShape);
+          const startShape = findConnectableShapeNearPoint(p1, store.shapes);
+          const endShape = findConnectableShapeNearPoint(p2, store.shapes);
+
+          const shapeWithConnections: ArrowShape | LineShape = {
+            ...currentShape,
+            startConnection: startShape ? { shapeId: startShape.id } : undefined,
+            endConnection: endShape ? { shapeId: endShape.id } : undefined,
+          };
+          store.addShape(shapeWithConnections);
         }
       } else {
         store.addShape(currentShape);

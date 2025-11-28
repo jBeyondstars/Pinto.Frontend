@@ -72,6 +72,7 @@ export async function compile(
   );
 
   const shapes: Shape[] = [];
+  const astIdToShapeId = new Map<string, string>();
 
   if (allHavePositions) {
     // Use explicit positions - no ELK layout needed
@@ -87,6 +88,7 @@ export async function compile(
         node
       );
       shapes.push(shape);
+      astIdToShapeId.set(id, shape.id);
     }
 
     // Create edges - use anchor points if available, otherwise use node centers
@@ -113,9 +115,13 @@ export async function compile(
         toY = toNode.style!.y! + (toNode.style?.height || toDims.height) / 2;
       }
 
+      const fromShapeId = astIdToShapeId.get(edge.from);
+      const toShapeId = astIdToShapeId.get(edge.to);
       const edgeShape = createArrowFromPoints(
         [{ x: fromX, y: fromY }, { x: toX, y: toY }],
-        edge
+        edge,
+        fromShapeId,
+        toShapeId
       );
       shapes.push(edgeShape);
     }
@@ -172,6 +178,7 @@ export async function compile(
           astNode
         );
         shapes.push(shape);
+        astIdToShapeId.set(elkNode.id, shape.id);
       }
     }
 
@@ -180,7 +187,9 @@ export async function compile(
         const elkEdge = layoutedGraph.edges[i] as ElkExtendedEdge;
         const astEdge = edges[i];
 
-        const edgeShape = createEdgeShape(elkEdge, astEdge, layoutedGraph);
+        const fromShapeId = astIdToShapeId.get(astEdge.from);
+        const toShapeId = astIdToShapeId.get(astEdge.to);
+        const edgeShape = createEdgeShape(elkEdge, astEdge, layoutedGraph, fromShapeId, toShapeId);
         if (edgeShape) {
           shapes.push(edgeShape);
         }
@@ -277,7 +286,9 @@ function createNodeShape(
 function createEdgeShape(
   elkEdge: ElkExtendedEdge,
   astEdge: EdgeAST,
-  graph: ElkNode
+  graph: ElkNode,
+  fromShapeId?: string,
+  toShapeId?: string
 ): ArrowShape | LineShape | null {
   // Get edge sections (routing points)
   const sections = elkEdge.sections;
@@ -295,7 +306,9 @@ function createEdgeShape(
 
     return createArrowFromPoints(
       [{ x: startX, y: startY }, { x: endX, y: endY }],
-      astEdge
+      astEdge,
+      fromShapeId,
+      toShapeId
     );
   }
 
@@ -314,12 +327,14 @@ function createEdgeShape(
     points.push({ x: section.endPoint.x, y: section.endPoint.y });
   }
 
-  return createArrowFromPoints(points, astEdge);
+  return createArrowFromPoints(points, astEdge, fromShapeId, toShapeId);
 }
 
 function createArrowFromPoints(
   points: Array<{ x: number; y: number }>,
-  astEdge: EdgeAST
+  astEdge: EdgeAST,
+  fromShapeId?: string,
+  toShapeId?: string
 ): ArrowShape | LineShape {
   const baseProps = {
     id: generateId(),
@@ -331,6 +346,8 @@ function createArrowFromPoints(
     fill: "transparent",
     opacity: 1,
     points,
+    startConnection: fromShapeId ? { shapeId: fromShapeId } : undefined,
+    endConnection: toShapeId ? { shapeId: toShapeId } : undefined,
   };
 
   const arrowType = astEdge.arrowType;

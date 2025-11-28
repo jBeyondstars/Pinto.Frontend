@@ -7,6 +7,10 @@ export interface Point {
   y: number;
 }
 
+export interface Connection {
+  shapeId: string;
+}
+
 export interface BoundingBox {
   x: number;
   y: number;
@@ -42,6 +46,8 @@ export interface EllipseShape extends BaseShape {
 export interface LineShape extends BaseShape {
   type: "line";
   points: Point[];
+  startConnection?: Connection;
+  endConnection?: Connection;
 }
 
 export interface ArrowShape extends BaseShape {
@@ -49,6 +55,8 @@ export interface ArrowShape extends BaseShape {
   points: Point[];
   startArrow: boolean;
   endArrow: boolean;
+  startConnection?: Connection;
+  endConnection?: Connection;
 }
 
 export interface FreehandShape extends BaseShape {

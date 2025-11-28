@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import type { Shape, Tool, CanvasState, Point } from "./types";
+import type { Shape, Tool, CanvasState, Point, ArrowShape, LineShape } from "./types";
 
 interface CanvasStore extends CanvasState {
   tool: Tool;
@@ -15,6 +15,7 @@ interface CanvasStore extends CanvasState {
 
   addShape: (shape: Shape) => void;
   updateShape: (id: string, updates: Partial<Shape>) => void;
+  moveShape: (id: string, dx: number, dy: number) => void;
   deleteShape: (id: string) => void;
   deleteSelectedShapes: () => void;
 
@@ -56,6 +57,36 @@ export const useCanvasStore = create<CanvasStore>((set, get) => ({
       shapes: state.shapes.map((s) =>
         s.id === id ? ({ ...s, ...updates } as Shape) : s
       ),
+    })),
+
+  moveShape: (id, dx, dy) =>
+    set((state) => ({
+      shapes: state.shapes.map((s) => {
+        // Move the shape itself
+        if (s.id === id) {
+          return { ...s, x: s.x + dx, y: s.y + dy } as Shape;
+        }
+        // Update connected arrows/lines
+        if (s.type === "arrow" || s.type === "line") {
+          const connectable = s as ArrowShape | LineShape;
+          const startConnected = connectable.startConnection?.shapeId === id;
+          const endConnected = connectable.endConnection?.shapeId === id;
+
+          if (startConnected || endConnected) {
+            const newPoints = connectable.points.map((p, i) => {
+              if (i === 0 && startConnected) {
+                return { x: p.x + dx, y: p.y + dy };
+              }
+              if (i === connectable.points.length - 1 && endConnected) {
+                return { x: p.x + dx, y: p.y + dy };
+              }
+              return p;
+            });
+            return { ...s, points: newPoints } as Shape;
+          }
+        }
+        return s;
+      }),
     })),
 
   deleteShape: (id) =>
