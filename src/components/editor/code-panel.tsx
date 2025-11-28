@@ -1,7 +1,7 @@
 import { useState, useCallback } from "react";
-import { Play, AlertCircle } from "lucide-react";
+import { Play, AlertCircle, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { parseAndCompile } from "@/lib/dsl";
+import { parseAndCompile, decompile } from "@/lib/dsl";
 import { useCanvasStore } from "@/lib/canvas";
 
 const EXAMPLE_CODE = `# Simple flowchart
@@ -22,6 +22,7 @@ export function CodePanel() {
   const [errors, setErrors] = useState<string[]>([]);
   const [isCompiling, setIsCompiling] = useState(false);
 
+  const shapes = useCanvasStore((s) => s.shapes);
   const addShape = useCanvasStore((s) => s.addShape);
   const clear = useCanvasStore((s) => s.clear);
 
@@ -39,7 +40,6 @@ export function CodePanel() {
       if (result.errors.length > 0) {
         setErrors(result.errors.map((e) => e.message));
       } else {
-        // Clear existing shapes and add new ones
         clear();
         for (const shape of result.shapes) {
           addShape(shape);
@@ -52,18 +52,34 @@ export function CodePanel() {
     }
   }, [code, addShape, clear]);
 
+  const handleSync = useCallback(() => {
+    const generatedCode = decompile(shapes);
+    setCode(generatedCode || "# Empty canvas");
+    setErrors([]);
+  }, [shapes]);
+
   return (
     <div className="flex flex-col h-full bg-background border-r">
-      <div className="flex items-center justify-between p-2 border-b">
+      <div className="flex items-center justify-between p-2 border-b gap-1">
         <span className="text-sm font-medium">Code</span>
-        <Button
-          size="sm"
-          onClick={handleRun}
-          disabled={isCompiling}
-        >
-          <Play className="h-4 w-4 mr-1" />
-          {isCompiling ? "Compiling..." : "Run"}
-        </Button>
+        <div className="flex gap-1">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={handleSync}
+            title="Sync from canvas"
+          >
+            <RefreshCw className="h-4 w-4" />
+          </Button>
+          <Button
+            size="sm"
+            onClick={handleRun}
+            disabled={isCompiling}
+          >
+            <Play className="h-4 w-4 mr-1" />
+            {isCompiling ? "..." : "Run"}
+          </Button>
+        </div>
       </div>
 
       <textarea
