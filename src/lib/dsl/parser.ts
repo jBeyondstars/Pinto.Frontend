@@ -100,16 +100,26 @@ class PintoParser extends CstParser {
     this.CONSUME(RParen);
   });
 
-  // EdgeOrNode := NodeRef (Arrow NodeRef Label?)*
+  // EdgeOrNode := NodeRef (Arrow NodeRef AnchorSpec? Label?)*
   private edgeOrNode = this.RULE("edgeOrNode", () => {
     this.SUBRULE(this.nodeRef, { LABEL: "left" });
     this.MANY(() => {
       this.SUBRULE(this.arrow);
       this.SUBRULE2(this.nodeRef, { LABEL: "right" });
       this.OPTION(() => {
+        this.SUBRULE(this.anchorSpec);
+      });
+      this.OPTION2(() => {
         this.SUBRULE(this.labelSpec);
       });
     });
+  });
+
+  // AnchorSpec := '(' StyleProps ')'
+  private anchorSpec = this.RULE("anchorSpec", () => {
+    this.CONSUME(LParen);
+    this.SUBRULE(this.styleProps);
+    this.CONSUME(RParen);
   });
 
   // NodeRef := Identifier ('.' Identifier)? ShapeSpec? LabelSpec?
@@ -340,6 +350,15 @@ class PintoASTVisitor extends BaseCstVisitor {
           arrowType,
         };
 
+        // Check for anchor points
+        if (ctx.anchorSpec && ctx.anchorSpec[i]) {
+          const anchors = this.visit(ctx.anchorSpec[i]) as StyleProps;
+          if (anchors.x1 !== undefined) edge.x1 = anchors.x1;
+          if (anchors.y1 !== undefined) edge.y1 = anchors.y1;
+          if (anchors.x2 !== undefined) edge.x2 = anchors.x2;
+          if (anchors.y2 !== undefined) edge.y2 = anchors.y2;
+        }
+
         // Check for label after this edge
         if (ctx.labelSpec && ctx.labelSpec[i]) {
           edge.label = this.visit(ctx.labelSpec[i]);
@@ -391,6 +410,10 @@ class PintoASTVisitor extends BaseCstVisitor {
   }
 
   styleSpec(ctx: any): StyleProps {
+    return this.visit(ctx.styleProps);
+  }
+
+  anchorSpec(ctx: any): StyleProps {
     return this.visit(ctx.styleProps);
   }
 

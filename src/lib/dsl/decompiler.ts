@@ -18,6 +18,10 @@ interface DecompiledEdge {
   to: string;
   arrowType: ArrowTypeAST;
   label?: string;
+  x1: number;
+  y1: number;
+  x2: number;
+  y2: number;
 }
 
 interface FreeArrow {
@@ -212,6 +216,10 @@ export function decompile(shapes: Shape[]): string {
           from: edgeNodes.from,
           to: edgeNodes.to,
           arrowType: arrowTypeToAST(shape),
+          x1: Math.round(startPoint.x),
+          y1: Math.round(startPoint.y),
+          x2: Math.round(endPoint.x),
+          y2: Math.round(endPoint.y),
         });
       } else {
         // Free arrow - not connected to any nodes
@@ -261,7 +269,7 @@ export function decompile(shapes: Shape[]): string {
 
   for (const edge of edges) {
     const arrow = arrowTypeToSymbol(edge.arrowType);
-    let line = `${edge.from} ${arrow} ${edge.to}`;
+    let line = `${edge.from} ${arrow} ${edge.to} (x1: ${edge.x1}, y1: ${edge.y1}, x2: ${edge.x2}, y2: ${edge.y2})`;
     if (edge.label) {
       line += `: "${edge.label}"`;
     }

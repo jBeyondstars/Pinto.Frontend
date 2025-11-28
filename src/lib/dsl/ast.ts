@@ -47,6 +47,11 @@ export interface EdgeAST extends BaseAST {
   to: string;
   label?: string;
   arrowType: ArrowTypeAST;
+  // Anchor points (absolute coordinates)
+  x1?: number;
+  y1?: number;
+  x2?: number;
+  y2?: number;
 }
 
 export interface GroupAST extends BaseAST {

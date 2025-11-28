@@ -89,19 +89,29 @@ export async function compile(
       shapes.push(shape);
     }
 
-    // Create edges as direct lines between node centers
+    // Create edges - use anchor points if available, otherwise use node centers
     for (const edge of edges) {
       const fromNode = nodesMap.get(edge.from);
       const toNode = nodesMap.get(edge.to);
       if (!fromNode || !toNode) continue;
 
-      const fromDims = SHAPE_DIMENSIONS[fromNode.shape || DEFAULT_SHAPE];
-      const toDims = SHAPE_DIMENSIONS[toNode.shape || DEFAULT_SHAPE];
+      let fromX: number, fromY: number, toX: number, toY: number;
 
-      const fromX = fromNode.style!.x! + (fromNode.style?.width || fromDims.width) / 2;
-      const fromY = fromNode.style!.y! + (fromNode.style?.height || fromDims.height) / 2;
-      const toX = toNode.style!.x! + (toNode.style?.width || toDims.width) / 2;
-      const toY = toNode.style!.y! + (toNode.style?.height || toDims.height) / 2;
+      if (edge.x1 !== undefined && edge.y1 !== undefined && edge.x2 !== undefined && edge.y2 !== undefined) {
+        // Use explicit anchor points
+        fromX = edge.x1;
+        fromY = edge.y1;
+        toX = edge.x2;
+        toY = edge.y2;
+      } else {
+        // Fall back to node centers
+        const fromDims = SHAPE_DIMENSIONS[fromNode.shape || DEFAULT_SHAPE];
+        const toDims = SHAPE_DIMENSIONS[toNode.shape || DEFAULT_SHAPE];
+        fromX = fromNode.style!.x! + (fromNode.style?.width || fromDims.width) / 2;
+        fromY = fromNode.style!.y! + (fromNode.style?.height || fromDims.height) / 2;
+        toX = toNode.style!.x! + (toNode.style?.width || toDims.width) / 2;
+        toY = toNode.style!.y! + (toNode.style?.height || toDims.height) / 2;
+      }
 
       const edgeShape = createArrowFromPoints(
         [{ x: fromX, y: fromY }, { x: toX, y: toY }],
