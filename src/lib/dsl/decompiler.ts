@@ -51,34 +51,71 @@ function arrowTypeToAST(shape: ArrowShape | LineShape): ArrowTypeAST {
   return "right";
 }
 
-function distanceToShape(
+function distanceToShapeBorder(
   point: { x: number; y: number },
   node: DecompiledNode
 ): number {
-  const centerX = node.x + node.width / 2;
-  const centerY = node.y + node.height / 2;
-  const dx = point.x - centerX;
-  const dy = point.y - centerY;
+  // Calculate distance to the nearest edge of the bounding box
+  const left = node.x;
+  const right = node.x + node.width;
+  const top = node.y;
+  const bottom = node.y + node.height;
+
+  // If point is inside the shape, distance is 0
+  if (point.x >= left && point.x <= right && point.y >= top && point.y <= bottom) {
+    return 0;
+  }
+
+  // Calculate distance to nearest edge
+  const dx = Math.max(left - point.x, 0, point.x - right);
+  const dy = Math.max(top - point.y, 0, point.y - bottom);
   return Math.sqrt(dx * dx + dy * dy);
 }
 
-function findConnectedNode(
+function findClosestNodes(
   point: { x: number; y: number },
-  nodes: Map<string, DecompiledNode>,
-  maxDistance: number = Infinity
-): string | null {
-  let closest: string | null = null;
-  let minDist = maxDistance;
+  nodes: Map<string, DecompiledNode>
+): Array<{ id: string; dist: number }> {
+  const results: Array<{ id: string; dist: number }> = [];
 
   for (const [id, node] of nodes) {
-    const dist = distanceToShape(point, node);
-    if (dist < minDist) {
-      minDist = dist;
-      closest = id;
+    const dist = distanceToShapeBorder(point, node);
+    results.push({ id, dist });
+  }
+
+  return results.sort((a, b) => a.dist - b.dist);
+}
+
+function findEdgeNodes(
+  startPoint: { x: number; y: number },
+  endPoint: { x: number; y: number },
+  nodes: Map<string, DecompiledNode>
+): { from: string; to: string } | null {
+  if (nodes.size === 0) return null;
+
+  const startClosest = findClosestNodes(startPoint, nodes);
+  const endClosest = findClosestNodes(endPoint, nodes);
+
+  if (startClosest.length === 0 || endClosest.length === 0) return null;
+
+  const from = startClosest[0].id;
+  let to = endClosest[0].id;
+
+  // If both ends point to the same node and there are other nodes,
+  // try to find a different node for the end point
+  if (from === to && endClosest.length > 1) {
+    to = endClosest[1].id;
+  }
+
+  // If still same node after trying alternatives, check if start could be different
+  if (from === to && startClosest.length > 1) {
+    const altFrom = startClosest[1].id;
+    if (altFrom !== to) {
+      return { from: altFrom, to };
     }
   }
 
-  return closest;
+  return { from, to };
 }
 
 function arrowTypeToSymbol(arrowType: ArrowTypeAST): string {
@@ -145,13 +182,12 @@ export function decompile(shapes: Shape[]): string {
       const startPoint = getAbsolutePoint(shape, points[0]);
       const endPoint = getAbsolutePoint(shape, points[points.length - 1]);
 
-      const fromNode = findConnectedNode(startPoint, nodes);
-      const toNode = findConnectedNode(endPoint, nodes);
+      const edgeNodes = findEdgeNodes(startPoint, endPoint, nodes);
 
-      if (fromNode && toNode) {
+      if (edgeNodes) {
         edges.push({
-          from: fromNode,
-          to: toNode,
+          from: edgeNodes.from,
+          to: edgeNodes.to,
           arrowType: arrowTypeToAST(shape),
         });
       }
