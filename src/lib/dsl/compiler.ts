@@ -1,5 +1,5 @@
 import type { ElkNode, ElkExtendedEdge } from "elkjs";
-import type { DocumentAST, NodeAST, EdgeAST, GroupAST, ShapeTypeAST } from "./ast";
+import type { DocumentAST, NodeAST, EdgeAST, GroupAST, FreeArrowAST, ShapeTypeAST } from "./ast";
 import type { Shape, RectangleShape, EllipseShape, LineShape, ArrowShape } from "../canvas/types";
 import { generateId } from "../canvas/utils";
 
@@ -42,10 +42,11 @@ export async function compile(
     edgeSpacing = 20,
   } = options;
 
-  // Extract nodes and edges from AST
+  // Extract nodes, edges, and free arrows from AST
   const nodesMap = new Map<string, NodeAST>();
   const edges: EdgeAST[] = [];
   const groups: GroupAST[] = [];
+  const freeArrows: FreeArrowAST[] = [];
 
   for (const stmt of ast.statements) {
     if (stmt.type === "node") {
@@ -60,6 +61,8 @@ export async function compile(
       }
     } else if (stmt.type === "group") {
       groups.push(stmt);
+    } else if (stmt.type === "freeArrow") {
+      freeArrows.push(stmt);
     }
   }
 
@@ -173,6 +176,28 @@ export async function compile(
         }
       }
     }
+  }
+
+  // Add free arrows (not connected to nodes)
+  for (const freeArrow of freeArrows) {
+    const arrowShape: ArrowShape = {
+      id: generateId(),
+      type: "arrow",
+      x: 0,
+      y: 0,
+      rotation: 0,
+      stroke: "#000000",
+      strokeWidth: 2,
+      fill: "transparent",
+      opacity: 1,
+      points: [
+        { x: freeArrow.x1, y: freeArrow.y1 },
+        { x: freeArrow.x2, y: freeArrow.y2 },
+      ],
+      startArrow: freeArrow.arrowType === "left" || freeArrow.arrowType === "both",
+      endArrow: freeArrow.arrowType !== "left",
+    };
+    shapes.push(arrowShape);
   }
 
   return shapes;

@@ -20,6 +20,14 @@ interface DecompiledEdge {
   label?: string;
 }
 
+interface FreeArrow {
+  x1: number;
+  y1: number;
+  x2: number;
+  y2: number;
+  arrowType: ArrowTypeAST;
+}
+
 function generateNodeId(index: number): string {
   if (index < 26) {
     return String.fromCharCode(97 + index);
@@ -157,6 +165,7 @@ function getAbsolutePoint(
 export function decompile(shapes: Shape[]): string {
   const nodes = new Map<string, DecompiledNode>();
   const edges: DecompiledEdge[] = [];
+  const freeArrows: FreeArrow[] = [];
   const shapeToNodeId = new Map<string, string>();
 
   // First pass: identify nodes (rectangles, ellipses)
@@ -204,6 +213,15 @@ export function decompile(shapes: Shape[]): string {
           to: edgeNodes.to,
           arrowType: arrowTypeToAST(shape),
         });
+      } else {
+        // Free arrow - not connected to any nodes
+        freeArrows.push({
+          x1: Math.round(startPoint.x),
+          y1: Math.round(startPoint.y),
+          x2: Math.round(endPoint.x),
+          y2: Math.round(endPoint.y),
+          arrowType: arrowTypeToAST(shape),
+        });
       }
     }
   }
@@ -248,6 +266,15 @@ export function decompile(shapes: Shape[]): string {
       line += `: "${edge.label}"`;
     }
     lines.push(line);
+  }
+
+  // Add free arrows
+  if ((nodes.size > 0 || edges.length > 0) && freeArrows.length > 0) {
+    lines.push("");
+  }
+
+  for (const arrow of freeArrows) {
+    lines.push(`arrow(x1: ${arrow.x1}, y1: ${arrow.y1}, x2: ${arrow.x2}, y2: ${arrow.y2})`);
   }
 
   return lines.join("\n");

@@ -15,6 +15,7 @@ import {
   LCurly,
   RCurly,
   Group,
+  Arrow,
   ShapeRect,
   ShapeBox,
   ShapeRectangle,
@@ -38,6 +39,7 @@ import type {
   EdgeAST,
   GroupAST,
   LayoutAST,
+  FreeArrowAST,
   ArrowTypeAST,
   ShapeTypeAST,
   StyleProps,
@@ -59,11 +61,12 @@ class PintoParser extends CstParser {
     });
   });
 
-  // Statement := GroupDef | LayoutDef | EdgeOrNode
+  // Statement := GroupDef | LayoutDef | FreeArrowDef | EdgeOrNode
   private statement = this.RULE("statement", () => {
     this.OR([
       { ALT: () => this.SUBRULE(this.groupDef) },
       { ALT: () => this.SUBRULE(this.layoutDef) },
+      { ALT: () => this.SUBRULE(this.freeArrowDef) },
       { ALT: () => this.SUBRULE(this.edgeOrNode) },
     ]);
   });
@@ -87,6 +90,14 @@ class PintoParser extends CstParser {
     this.CONSUME(Layout);
     this.CONSUME(Colon);
     this.CONSUME(Identifier);
+  });
+
+  // FreeArrowDef := 'arrow' '(' StyleProps ')'
+  private freeArrowDef = this.RULE("freeArrowDef", () => {
+    this.CONSUME(Arrow);
+    this.CONSUME(LParen);
+    this.SUBRULE(this.styleProps);
+    this.CONSUME(RParen);
   });
 
   // EdgeOrNode := NodeRef (Arrow NodeRef Label?)*
@@ -239,6 +250,9 @@ class PintoASTVisitor extends BaseCstVisitor {
     if (ctx.layoutDef) {
       return this.visit(ctx.layoutDef);
     }
+    if (ctx.freeArrowDef) {
+      return this.visit(ctx.freeArrowDef);
+    }
     if (ctx.edgeOrNode) {
       return this.visit(ctx.edgeOrNode);
     }
@@ -272,6 +286,18 @@ class PintoASTVisitor extends BaseCstVisitor {
     return {
       type: "layout",
       algorithm: ctx.Identifier[0].image,
+    };
+  }
+
+  freeArrowDef(ctx: any): FreeArrowAST {
+    const props = this.visit(ctx.styleProps) as StyleProps;
+    return {
+      type: "freeArrow",
+      x1: props.x1 || 0,
+      y1: props.y1 || 0,
+      x2: props.x2 || 0,
+      y2: props.y2 || 0,
+      arrowType: "right",
     };
   }
 
@@ -380,6 +406,10 @@ class PintoASTVisitor extends BaseCstVisitor {
         if (key === "y") style.y = Number(value);
         if (key === "width") style.width = Number(value);
         if (key === "height") style.height = Number(value);
+        if (key === "x1") style.x1 = Number(value);
+        if (key === "y1") style.y1 = Number(value);
+        if (key === "x2") style.x2 = Number(value);
+        if (key === "y2") style.y2 = Number(value);
       }
     }
     return style;

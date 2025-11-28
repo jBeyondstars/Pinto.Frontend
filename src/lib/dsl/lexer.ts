@@ -23,6 +23,9 @@ export const ShapeCylinder = createToken({ name: "ShapeCylinder", pattern: /cyli
 export const ShapeDatabase = createToken({ name: "ShapeDatabase", pattern: /database/, longer_alt: Identifier });
 export const ShapeDb = createToken({ name: "ShapeDb", pattern: /db/, longer_alt: Identifier });
 
+// Free arrow keyword
+export const Arrow = createToken({ name: "Arrow", pattern: /arrow/, longer_alt: Identifier });
+
 // Arrows
 export const ArrowBiDirectional = createToken({ name: "ArrowBiDirectional", pattern: /<->/ });
 export const ArrowLeft = createToken({ name: "ArrowLeft", pattern: /<-/ });
@@ -94,6 +97,7 @@ export const allTokens = [
 
   // Keywords and shape types (before Identifier, but with longer_alt)
   Group,
+  Arrow,
   ShapeRectangle,  // longer first
   ShapeRect,
   ShapeBox,

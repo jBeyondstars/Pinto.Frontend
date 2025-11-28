@@ -27,6 +27,10 @@ export interface StyleProps {
   y?: number;
   width?: number;
   height?: number;
+  x1?: number;
+  y1?: number;
+  x2?: number;
+  y2?: number;
 }
 
 export interface NodeAST extends BaseAST {
@@ -59,7 +63,16 @@ export interface LayoutAST extends BaseAST {
   options?: Record<string, string | number>;
 }
 
-export type StatementAST = NodeAST | EdgeAST | GroupAST | LayoutAST;
+export interface FreeArrowAST extends BaseAST {
+  type: "freeArrow";
+  x1: number;
+  y1: number;
+  x2: number;
+  y2: number;
+  arrowType: ArrowTypeAST;
+}
+
+export type StatementAST = NodeAST | EdgeAST | GroupAST | LayoutAST | FreeArrowAST;
 
 export interface DocumentAST {
   statements: StatementAST[];
