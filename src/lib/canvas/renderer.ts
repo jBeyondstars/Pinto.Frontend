@@ -9,7 +9,7 @@ export function renderCanvas(
 ): void {
   const { shapes, selectedIds, camera } = state;
 
-  // White background
+  // bg
   ctx.fillStyle = "#ffffff";
   ctx.fillRect(0, 0, width, height);
   ctx.save();
