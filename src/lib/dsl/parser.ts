@@ -31,6 +31,7 @@ import {
   NumberLiteral,
   Dot,
   Layout,
+  At,
 } from "./lexer";
 import type {
   DocumentAST,
@@ -115,8 +116,9 @@ class PintoParser extends CstParser {
     });
   });
 
-  // AnchorSpec := '(' StyleProps ')'
+  // AnchorSpec := '@' '(' StyleProps ')'
   private anchorSpec = this.RULE("anchorSpec", () => {
+    this.CONSUME(At);
     this.CONSUME(LParen);
     this.SUBRULE(this.styleProps);
     this.CONSUME(RParen);

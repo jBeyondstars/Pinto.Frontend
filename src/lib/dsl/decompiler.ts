@@ -269,7 +269,7 @@ export function decompile(shapes: Shape[]): string {
 
   for (const edge of edges) {
     const arrow = arrowTypeToSymbol(edge.arrowType);
-    let line = `${edge.from} ${arrow} ${edge.to} (x1: ${edge.x1}, y1: ${edge.y1}, x2: ${edge.x2}, y2: ${edge.y2})`;
+    let line = `${edge.from} ${arrow} ${edge.to} @(x1: ${edge.x1}, y1: ${edge.y1}, x2: ${edge.x2}, y2: ${edge.y2})`;
     if (edge.label) {
       line += `: "${edge.label}"`;
     }

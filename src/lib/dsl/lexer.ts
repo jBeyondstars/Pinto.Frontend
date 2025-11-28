@@ -58,6 +58,7 @@ export const RParen = createToken({ name: "RParen", pattern: /\)/ });
 export const Colon = createToken({ name: "Colon", pattern: /:/ });
 export const Comma = createToken({ name: "Comma", pattern: /,/ });
 export const Dot = createToken({ name: "Dot", pattern: /\./ });
+export const At = createToken({ name: "At", pattern: /@/ });
 
 // Whitespace & Comments
 export const WhiteSpace = createToken({
@@ -120,6 +121,7 @@ export const allTokens = [
   Colon,
   Comma,
   Dot,
+  At,
 ];
 
 export const PintoLexer = new Lexer(allTokens);
